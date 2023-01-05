@@ -2,17 +2,19 @@
 
 const express = require('express');
 const { NotFoundError, BadRequestError } = require('../expressError');
-
+const {checkPutParams, checkPostParams} = require("../middleware")
 const db = require('../db');
 
 let router = new express.Router();
 
+const EMPTY_BODY_MSG = "Request must include body"
+
 /** Returns list of companies, like {companies: [{code, name}, ...]} */
 router.get('/', async function (req, res) {
-  // Order by name (or something in general)
   const results = await db.query(`
     SELECT code, name
-      FROM companies`
+      FROM companies
+      ORDER BY name`
   );
   const companies = results.rows;
 
@@ -45,14 +47,10 @@ router.get('/:code', async function(req, res) {
  * Needs to be given JSON like: {code, name, description}
  * Returns obj of new company: {company: {code, name, description}}
  * */
-router.post('/', async function(req, res) {
-  if (req.body === undefined) throw new BadRequestError('Request must include body');
+router.post('/', checkPostParams, async function(req, res) {
+  if (req.body === undefined) throw new BadRequestError(EMPTY_BODY_MSG);
 
   const { code, name, description } = req.body;
-  // Add middleware that does the following validation for us
-  if (code === undefined || name === undefined || description === undefined) {
-    throw new BadRequestError('Body must include code, name, and description');
-  }
 
   const results = await db.query(`
     INSERT INTO companies (code, name, description)
@@ -69,16 +67,12 @@ router.post('/', async function(req, res) {
  * Needs to be given JSON like: {name, description}
  * Returns update company object: {company: {code, name, description}}
  * */
-router.put('/:code', async function(req, res) {
+router.put('/:code', checkPutParams, async function(req, res) {
   // Make global variable for this type of badrequesterror message
-  if (req.body === undefined) throw new BadRequestError('Request must include body');
+  if (req.body === undefined) throw new BadRequestError(EMPTY_BODY_MSG);
 
   const { name, description } = req.body;
   const code = req.params.code;
-  // Add middleware that does the following validation for us
-  if (name === undefined || description === undefined) {
-    throw new BadRequestError('Body must include name and description');
-  }
 
   const results = await db.query(`
     UPDATE companies
@@ -99,21 +93,16 @@ router.put('/:code', async function(req, res) {
 router.delete('/:code', async function(req, res) {
   const code = req.params.code;
 
-  const compResults = await db.query(`
-    SELECT code, name, description
-      FROM companies
-      WHERE code = $1`, [code]
-  );
-  const company = compResults.rows[0];
-
-  if (company === undefined) throw new NotFoundError(`No company with code: ${code}`);
-
   const results = await db.query(`
     DELETE
-      FROM companies
-      WHERE code = $1`, [code]
-      // Return something and check if that something is something for error handling
-  );
+    FROM companies
+    WHERE code = $1
+    RETURNING code`,
+    [code]);
+
+  const company = results.rows[0];
+
+  if (company === undefined) throw new NotFoundError(`No company with code: ${code}`);
 
   return res.json({ status: 'deleted' });
 });
