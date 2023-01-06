@@ -2,8 +2,8 @@
 
 const { BadRequestError } = require("./expressError");
 
-/** Checks that the put request includes a name and description. */
-function checkPutParams(req, res, next) {
+/** Checks that the company put request includes a name and description. */
+function checkPutParamsCompany(req, res, next) {
   const { name, description } = req.body;
 
   if (name === undefined || description === undefined) {
@@ -13,9 +13,9 @@ function checkPutParams(req, res, next) {
   next();
 }
 
-/** Checks that the post request includes a name, code and description. */
+/** Checks that the company post request includes a name, code and description. */
 
-function checkPostParams(req, res, next) {
+function checkPostParamsCompany(req, res, next) {
   const { name, description, code } = req.body;
 
   if (name === undefined || description === undefined || code === undefined) {
@@ -25,5 +25,34 @@ function checkPostParams(req, res, next) {
   next();
 }
 
-module.exports = {checkPutParams,checkPostParams}
+/** Checks that the invoice post request includes a comp_code and amt. */
+
+function checkPostParamsInvoice(req, res, next) {
+  const { comp_code, amt } = req.body;
+
+  if (comp_code === undefined || amt === undefined) {
+    throw new BadRequestError('Body must include comp_code and amt');
+  }
+
+  next();
+}
+
+/** Checks that the invoice put request includes amt. */
+
+function checkPutParamsInvoice(req, res, next) {
+  const { amt } = req.body;
+
+  if (amt === undefined) {
+    throw new BadRequestError('Body must include amt');
+  }
+
+  next();
+}
+
+module.exports = {
+  checkPutParamsCompany,
+  checkPostParamsCompany,
+  checkPostParamsInvoice,
+  checkPutParamsInvoice
+}
 

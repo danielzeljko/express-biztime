@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { NotFoundError, BadRequestError } = require('../expressError');
-const {checkPutParams, checkPostParams} = require("../middleware")
+const { checkPutParamsCompany, checkPostParamsCompany } = require("../middleware")
 const db = require('../db');
 
 let router = new express.Router();
@@ -29,16 +29,23 @@ router.get('/', async function (req, res) {
 router.get('/:code', async function(req, res) {
   const code = req.params.code;
 
-  const results = await db.query(`
+  const cResults = await db.query(`
     SELECT code, name, description
       FROM companies
       WHERE code = $1`, [code]
   );
-  const company = results.rows[0];
+  const company = cResults.rows[0];
 
   if (company === undefined) {
     throw new NotFoundError(`No company with code: ${code}`);
   }
+
+  const iResults = await db.query(`
+    SELECT id
+      FROM invoices
+      WHERE comp_code = $1`, [code]);
+  const invoices = iResults.rows;
+  company.invoices = invoices.map(i => i.id);
 
   return res.json({ company });
 });
@@ -47,7 +54,7 @@ router.get('/:code', async function(req, res) {
  * Needs to be given JSON like: {code, name, description}
  * Returns obj of new company: {company: {code, name, description}}
  * */
-router.post('/', checkPostParams, async function(req, res) {
+router.post('/', checkPostParamsCompany, async function(req, res) {
   if (req.body === undefined) throw new BadRequestError(EMPTY_BODY_MSG);
 
   const { code, name, description } = req.body;
@@ -67,7 +74,7 @@ router.post('/', checkPostParams, async function(req, res) {
  * Needs to be given JSON like: {name, description}
  * Returns update company object: {company: {code, name, description}}
  * */
-router.put('/:code', checkPutParams, async function(req, res) {
+router.put('/:code', checkPutParamsCompany, async function(req, res) {
   // Make global variable for this type of badrequesterror message
   if (req.body === undefined) throw new BadRequestError(EMPTY_BODY_MSG);
 
